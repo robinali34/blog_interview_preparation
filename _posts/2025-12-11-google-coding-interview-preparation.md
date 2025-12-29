@@ -232,10 +232,12 @@ A comprehensive guide to Google coding interviews, covering LeetCode-style probl
 134. **[547. Number of Provinces](https://leetcode.com/problems/number-of-provinces/)** (Medium, 62.0%)
 135. **[323. Number of Connected Components in an Undirected Graph](https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/)** (Medium, 61.0%)
 
-### Union-Find
+### Disjoint-Set (Union-Find)
 
 136. **[128. Longest Consecutive Sequence](https://leetcode.com/problems/longest-consecutive-sequence/)** (Medium, 48.9%) - **High Frequency** ⭐⭐
-137. **[200. Number of Islands](https://leetcode.com/problems/number-of-islands/)** (Medium, 58.0%) - Can use Union-Find
+137. **[200. Number of Islands](https://leetcode.com/problems/number-of-islands/)** (Medium, 58.0%) - Can use Disjoint-Set
+
+**Reference**: [LeetCode Templates - Disjoint-Set](https://robinali34.github.io/blog_leetcode/leetcode-templates/)
 
 ---
 
@@ -512,6 +514,7 @@ These questions appear frequently in Google interviews:
 - **Cracking the Coding Interview**: Book by Gayle Laakmann McDowell
 - **Elements of Programming Interviews**: Comprehensive problem set
 - **Google Tech Dev Guide**: Google's official guide
+- **[LeetCode Templates](https://robinali34.github.io/blog_leetcode/leetcode-templates/)**: Solution patterns and templates by category
 
 ### Mock Interviews
 - **Pramp**: Free peer-to-peer mock interviews
