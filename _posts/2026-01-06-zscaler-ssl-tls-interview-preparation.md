@@ -47,7 +47,335 @@ A comprehensive guide to SSL/TLS protocols for Zscaler technical interviews, cov
 
 ---
 
-## 2. How SSL/TLS Works
+## 2. Cryptographic Fundamentals
+
+Understanding the cryptographic primitives used in SSL/TLS is essential for technical interviews. This section covers the key algorithms and concepts.
+
+### 2.1. Symmetric vs Asymmetric Encryption
+
+**Symmetric Encryption:**
+- **Same key** for encryption and decryption
+- **Fast** and efficient for bulk data
+- **Key distribution problem**: How to securely share the key?
+- **Examples**: AES (Advanced Encryption Standard), ChaCha20, 3DES
+
+```
+Plaintext + Key → [Encryption] → Ciphertext
+Ciphertext + Key → [Decryption] → Plaintext
+```
+
+**Asymmetric Encryption (Public Key Cryptography):**
+- **Two keys**: Public key (encrypt) and Private key (decrypt)
+- **Slower** than symmetric encryption
+- **Solves key distribution**: Public key can be shared openly
+- **Examples**: RSA, ECC (Elliptic Curve Cryptography)
+
+```
+Plaintext + Public Key → [Encryption] → Ciphertext
+Ciphertext + Private Key → [Decryption] → Plaintext
+```
+
+**TLS Usage:**
+- **Asymmetric**: Key exchange and authentication (handshake)
+- **Symmetric**: Bulk data encryption (application data)
+
+### 2.2. RSA (Rivest-Shamir-Adleman)
+
+**RSA** is one of the first public-key cryptosystems, developed in 1977.
+
+#### How RSA Works
+
+**Key Generation:**
+1. Choose two large prime numbers: `p` and `q`
+2. Calculate `n = p × q` (modulus)
+3. Calculate `φ(n) = (p-1) × (q-1)` (Euler's totient)
+4. Choose public exponent `e` (typically 65537)
+5. Calculate private exponent `d` where `d × e ≡ 1 (mod φ(n))`
+6. **Public Key**: `(n, e)`
+7. **Private Key**: `(n, d)`
+
+**Encryption:**
+```
+Ciphertext = Plaintext^e mod n
+```
+
+**Decryption:**
+```
+Plaintext = Ciphertext^d mod n
+```
+
+**Security:**
+- Based on **factoring problem**: Difficulty of factoring `n` into `p` and `q`
+- **Key size**: Typically 2048 or 4096 bits
+- **Computational cost**: Expensive for large keys
+
+**RSA in TLS:**
+- **Key Exchange**: Client encrypts premaster secret with server's public key
+- **Authentication**: Server signs with private key, client verifies with public key
+- **No Forward Secrecy**: If private key is compromised, past sessions can be decrypted
+
+**Example (Simplified):**
+```c
+// RSA key generation (conceptual)
+// p = 61, q = 53
+// n = 61 × 53 = 3233
+// φ(n) = 60 × 52 = 3120
+// e = 17 (public exponent)
+// d = 2753 (private exponent, calculated)
+
+// Public Key: (3233, 17)
+// Private Key: (3233, 2753)
+
+// Encryption: c = m^17 mod 3233
+// Decryption: m = c^2753 mod 3233
+```
+
+### 2.3. Diffie-Hellman Key Exchange (DHE)
+
+**Diffie-Hellman** allows two parties to establish a shared secret over an insecure channel.
+
+#### How DHE Works
+
+**Parameters:**
+- Large prime number `p` (modulus)
+- Generator `g` (primitive root modulo p)
+
+**Key Exchange:**
+1. **Alice** chooses private key `a`, calculates `A = g^a mod p` (public)
+2. **Bob** chooses private key `b`, calculates `B = g^b mod p` (public)
+3. **Alice** and **Bob** exchange `A` and `B`
+4. **Alice** calculates shared secret: `s = B^a mod p`
+5. **Bob** calculates shared secret: `s = A^b mod p`
+6. Both get the same value: `s = g^(ab) mod p`
+
+**Security:**
+- Based on **discrete logarithm problem**: Difficulty of finding `a` from `A = g^a mod p`
+- **Forward Secrecy**: Each session uses new ephemeral keys
+- **Computational cost**: More expensive than RSA
+
+**DHE in TLS:**
+- **Ephemeral DHE**: New keys for each session
+- **Forward secrecy**: Past sessions remain secure if long-term keys are compromised
+- **TLS 1.3**: Only allows ephemeral key exchange (ECDHE/DHE)
+
+**Example (Simplified):**
+```
+// Public parameters: p = 23, g = 5
+
+// Alice: a = 6, A = 5^6 mod 23 = 8
+// Bob:   b = 15, B = 5^15 mod 23 = 19
+
+// Exchange A=8 and B=19
+
+// Alice: s = 19^6 mod 23 = 2
+// Bob:   s = 8^15 mod 23 = 2
+
+// Shared secret: 2
+```
+
+### 2.4. Elliptic Curve Diffie-Hellman (ECDHE)
+
+**ECDHE** is Diffie-Hellman using elliptic curve cryptography, providing the same security with smaller key sizes.
+
+#### Elliptic Curve Basics
+
+**Elliptic Curve Equation:**
+```
+y² = x³ + ax + b (mod p)
+```
+
+**Key Exchange:**
+1. **Alice** chooses private key `a`, calculates `A = a × G` (public point)
+2. **Bob** chooses private key `b`, calculates `B = b × G` (public point)
+3. **Alice** and **Bob** exchange `A` and `B`
+4. **Alice** calculates shared secret: `S = a × B`
+5. **Bob** calculates shared secret: `S = b × A`
+6. Both get the same point: `S = ab × G`
+
+**Advantages over DHE:**
+- **Smaller key sizes**: 256-bit ECC ≈ 3072-bit RSA security
+- **Faster computation**: More efficient than DHE
+- **Forward secrecy**: Ephemeral keys for each session
+
+**Common Curves:**
+- **P-256** (secp256r1): 256-bit, widely used
+- **P-384** (secp384r1): 384-bit, higher security
+- **P-521** (secp521r1): 521-bit, highest security
+- **X25519**: 256-bit, modern, efficient
+
+**ECDHE in TLS:**
+- **TLS 1.3**: Only allows ECDHE/DHE (forward secrecy required)
+- **Preferred**: More efficient than DHE
+- **Modern standard**: Most TLS connections use ECDHE
+
+### 2.5. Hash Functions
+
+**Hash functions** produce fixed-size output (digest) from variable-size input.
+
+**Properties:**
+- **Deterministic**: Same input always produces same output
+- **One-way**: Cannot reverse to get original input
+- **Avalanche effect**: Small input change causes large output change
+- **Collision resistant**: Hard to find two inputs with same output
+
+**Common Hash Functions:**
+- **MD5**: 128-bit, deprecated (collision vulnerabilities)
+- **SHA-1**: 160-bit, deprecated (collision vulnerabilities)
+- **SHA-256**: 256-bit, widely used
+- **SHA-384**: 384-bit, higher security
+- **SHA-512**: 512-bit, highest security
+
+**Uses in TLS:**
+- **HMAC**: Message authentication code
+- **Certificate signatures**: Sign certificate content
+- **Key derivation**: Derive session keys from master secret
+- **TLS 1.3**: SHA-256 or SHA-384
+
+**Example:**
+```c
+// SHA-256 hash
+Input:  "Hello, TLS!"
+Output: "a3b5c7d9e1f2a3b5c7d9e1f2a3b5c7d9e1f2a3b5c7d9e1f2a3b5c7d9e1f2a3b5"
+
+// Any change in input produces completely different output
+Input:  "Hello, TLS"  (removed '!')
+Output: "d8e2f4a6b8c0d2e4f6a8b0c2d4e6f8a0b2c4d6e8f0a2b4c6d8e0f2a4b6c8d0"
+```
+
+### 2.6. Digital Signatures
+
+**Digital signatures** provide authentication and integrity verification.
+
+#### How Digital Signatures Work
+
+**Signing:**
+1. Calculate hash of message: `H = Hash(Message)`
+2. Encrypt hash with private key: `Signature = Encrypt(H, PrivateKey)`
+3. Send message and signature
+
+**Verification:**
+1. Calculate hash of received message: `H' = Hash(Message)`
+2. Decrypt signature with public key: `H = Decrypt(Signature, PublicKey)`
+3. Compare `H` and `H'`: If equal, signature is valid
+
+**Properties:**
+- **Authentication**: Proves message came from private key owner
+- **Integrity**: Detects any modification
+- **Non-repudiation**: Signer cannot deny signing
+
+**Algorithms:**
+- **RSA**: RSA-PSS, RSA-PKCS1-v1_5
+- **ECDSA**: Elliptic Curve Digital Signature Algorithm
+- **EdDSA**: Edwards-curve Digital Signature Algorithm (Ed25519, Ed448)
+
+**In TLS:**
+- **Certificate signatures**: CA signs server certificate
+- **CertificateVerify**: Server proves ownership of private key (TLS 1.3)
+- **Handshake integrity**: Verify handshake messages
+
+### 2.7. Certificate Authorities (CA) and PKI
+
+**Public Key Infrastructure (PKI)** manages digital certificates and public keys.
+
+#### Certificate Authority (CA)
+
+**Role:**
+- **Issues certificates**: Signs certificates for entities
+- **Trust anchor**: Root CAs are trusted by default
+- **Validation**: Verifies identity before issuing certificate
+
+**Certificate Hierarchy:**
+```
+Root CA (Self-signed)
+    |
+    +-- Intermediate CA (signed by Root)
+            |
+            +-- Server Certificate (signed by Intermediate)
+```
+
+**Trust Chain:**
+1. Browser/OS includes trusted root CAs
+2. Server presents certificate chain
+3. Client verifies chain up to trusted root
+4. If valid, client trusts server
+
+**Common CAs:**
+- **Commercial**: Let's Encrypt, DigiCert, GlobalSign, Sectigo
+- **Enterprise**: Internal CAs for corporate networks
+- **Browser trust stores**: Pre-installed root certificates
+
+#### X.509 Certificate Structure
+
+**Certificate Fields:**
+- **Version**: Certificate format (v1, v2, v3)
+- **Serial Number**: Unique identifier
+- **Signature Algorithm**: Algorithm used to sign (e.g., SHA256withRSA)
+- **Issuer**: CA that issued the certificate
+- **Validity**: Not Before, Not After dates
+- **Subject**: Entity the certificate identifies
+- **Subject Public Key Info**: Public key and algorithm
+- **Extensions**: Additional information (SAN, Key Usage, etc.)
+- **Signature**: CA's signature over all fields
+
+**Certificate Extensions:**
+- **Subject Alternative Name (SAN)**: Multiple hostnames
+- **Key Usage**: What the key can be used for
+- **Extended Key Usage**: Specific purposes (serverAuth, clientAuth)
+- **Authority Key Identifier**: Identifies CA's key
+- **Subject Key Identifier**: Identifies subject's key
+
+### 2.8. Message Authentication Code (MAC)
+
+**MAC** provides integrity and authentication for messages.
+
+**HMAC (Hash-based MAC):**
+```
+HMAC(K, M) = H(K ⊕ opad || H(K ⊕ ipad || M))
+```
+
+**Properties:**
+- **Integrity**: Detects tampering
+- **Authentication**: Verifies sender
+- **Requires shared secret**: Both parties need the key
+
+**In TLS:**
+- **TLS 1.2**: HMAC-SHA256, HMAC-SHA384
+- **TLS 1.3**: Uses AEAD (Authenticated Encryption with Associated Data)
+  - **AES-GCM**: Encryption + authentication
+  - **ChaCha20-Poly1305**: Encryption + authentication
+
+**AEAD (Authenticated Encryption with Associated Data):**
+- Combines encryption and authentication
+- More efficient than separate encryption + MAC
+- **TLS 1.3**: Only uses AEAD ciphers
+
+### 2.9. Key Derivation
+
+**Key derivation** generates session keys from master secret.
+
+**TLS Key Derivation Process:**
+1. **Premaster Secret**: Generated during key exchange
+2. **Master Secret**: Derived from premaster secret + random values
+3. **Session Keys**: Derived from master secret for:
+   - Client write encryption key
+   - Server write encryption key
+   - Client write MAC key
+   - Server write MAC key
+   - Client write IV (initialization vector)
+   - Server write IV
+
+**Key Derivation Function (KDF):**
+- **TLS 1.2**: PRF (Pseudo-Random Function) using HMAC
+- **TLS 1.3**: HKDF (HMAC-based Key Derivation Function)
+
+**Security:**
+- Each session has unique keys
+- Keys are derived deterministically
+- Forward secrecy (with ephemeral key exchange)
+
+---
+
+## 3. How SSL/TLS Works
 
 ### TLS Handshake Process (TLS 1.2)
 
@@ -233,7 +561,7 @@ Server Certificate (signed by Intermediate)
 
 ---
 
-## 3. Tools to Use
+## 4. Tools to Use
 
 ### OpenSSL Command Line
 
@@ -365,7 +693,7 @@ curl -k https://example.com
 
 ---
 
-## 4. C/C++ Linux Libraries
+## 5. C/C++ Linux Libraries
 
 ### OpenSSL (C/C++)
 
@@ -762,7 +1090,7 @@ gnutls_global_deinit();
 
 ---
 
-## 5. Common Interview Questions & Answers
+## 6. Common Interview Questions & Answers
 
 ### Q1: Explain the difference between SSL and TLS.
 
