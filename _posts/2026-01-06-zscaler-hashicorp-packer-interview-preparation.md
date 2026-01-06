@@ -102,7 +102,7 @@ Packer Template (JSON/HCL)
       "source_ami": "ami-0c55b159cbfafe1f0",
       "instance_type": "t2.micro",
       "ssh_username": "ubuntu",
-      "ami_name": "my-custom-ami-{{timestamp}}"
+      "ami_name": "my-custom-ami-&#123;&#123;timestamp&#125;&#125;"
     }
   ],
   "provisioners": [
@@ -282,7 +282,7 @@ build {
   sources = ["source.azure-arm.azure-ubuntu"]
   
   provisioner "shell" {
-    execute_command = "chmod +x {{ .Path }}; {{ .Vars }} sudo -E sh '{{ .Path }}'"
+    execute_command = "chmod +x &#123;&#123; .Path &#125;&#125;; &#123;&#123; .Vars &#125;&#125; sudo -E sh '&#123;&#123; .Path &#125;&#125;'"
     script          = "scripts/install-nginx.sh"
   }
   
@@ -432,7 +432,7 @@ source "vmware-iso" "vmware-ubuntu" {
     " netcfg/get_domain=vm<wait>",
     " netcfg/get_hostname=ubuntu<wait>",
     " noapic<wait>",
-    " preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg<wait>",
+    " preseed/url=http://&#123;&#123; .HTTPIP &#125;&#125;:&#123;&#123; .HTTPPort &#125;&#125;/preseed.cfg<wait>",
     " -- <wait>",
     "<enter><wait>"
   ]
@@ -842,7 +842,7 @@ source "amazon-ebs" "ubuntu" {
 ### Q12: How do you handle image versioning?
 
 **Answer:**
-- **Timestamps**: `{{timestamp}}` in image names
+- **Timestamps**: `&#123;&#123;timestamp&#125;&#125;` in image names
 - **Git tags**: Use version from Git
 - **Semantic versioning**: Major.Minor.Patch
 - **Metadata**: Store version in tags/labels

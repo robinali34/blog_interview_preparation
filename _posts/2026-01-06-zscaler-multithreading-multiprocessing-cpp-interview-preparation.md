@@ -1283,7 +1283,7 @@ int main() {
         {
             "https://api.example.com/users",
             "GET",
-            {{"Accept", "application/json"}},
+            { {"Accept", "application/json"} },
             ""
         },
         {
@@ -1308,7 +1308,7 @@ int main() {
         {
             "https://api.example.com/data",
             "GET",
-            {{"Accept", "application/json"}, {"X-Request-ID", "req-123"}},
+            { {"Accept", "application/json"}, {"X-Request-ID", "req-123"} },
             ""
         }
     };
