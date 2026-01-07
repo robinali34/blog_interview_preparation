@@ -477,6 +477,399 @@ Storage: S3 for media files
 
 ---
 
+## Common Trade-offs in System Design
+
+Understanding and articulating trade-offs is crucial in system design interviews. Every architectural decision involves balancing competing concerns. This section covers the most common trade-offs you'll encounter.
+
+### 1. Consistency vs Availability (CAP Theorem)
+
+**The Fundamental Trade-off:**
+
+**Strong Consistency:**
+- **Pros**: All nodes see same data immediately, predictable behavior
+- **Cons**: Higher latency (wait for consensus), lower availability (blocks on failures)
+- **Use When**: Financial transactions, critical data, inventory systems
+- **Examples**: PostgreSQL with synchronous replication, distributed transactions
+
+**Eventual Consistency:**
+- **Pros**: Higher availability, lower latency, better performance
+- **Cons**: Possible stale data, complex conflict resolution
+- **Use When**: Social feeds, comments, likes, analytics
+- **Examples**: DynamoDB, Cassandra, DNS
+
+**Real-World Example:**
+- **Banking System**: Strong consistency (can't have money appear/disappear)
+- **Social Media Feed**: Eventual consistency (slightly stale feed is acceptable)
+
+### 2. Latency vs Freshness
+
+**Caching Strategy:**
+
+**Aggressive Caching:**
+- **Pros**: Very low latency, reduced load on backend
+- **Cons**: Stale data, cache invalidation complexity
+- **Use When**: Read-heavy, data changes infrequently
+- **Example**: CDN for static content, Redis for hot data
+
+**No/Minimal Caching:**
+- **Pros**: Always fresh data, simpler logic
+- **Cons**: Higher latency, more backend load
+- **Use When**: Real-time data, frequent updates
+- **Example**: Live stock prices, real-time chat
+
+**Hybrid Approach:**
+- Cache with TTL (Time To Live)
+- Cache invalidation on updates
+- Stale-while-revalidate pattern
+
+### 3. Throughput vs Latency
+
+**Batch Processing:**
+- **Pros**: High throughput, efficient resource usage
+- **Cons**: Higher latency (wait for batch)
+- **Use When**: Analytics, reporting, non-real-time processing
+- **Example**: ETL pipelines, data warehousing
+
+**Real-Time Processing:**
+- **Pros**: Low latency, immediate results
+- **Cons**: Lower throughput, more resources
+- **Use When**: User-facing features, real-time updates
+- **Example**: Real-time recommendations, live dashboards
+
+**Optimization Strategies:**
+- Batching small requests
+- Async processing for non-critical paths
+- Prioritize critical requests
+
+### 4. Cost vs Performance
+
+**Resource Allocation:**
+
+**High Performance:**
+- **Pros**: Fast response, good user experience
+- **Cons**: Higher infrastructure costs
+- **Strategies**: More servers, better hardware, premium services
+- **Example**: Dedicated servers, premium CDN, read replicas
+
+**Cost Optimization:**
+- **Pros**: Lower operational costs
+- **Cons**: May impact performance
+- **Strategies**: Right-sizing, reserved instances, spot instances
+- **Example**: Auto-scaling, serverless, shared resources
+
+**Balancing Act:**
+- Start with cost-effective solution
+- Scale up based on actual needs
+- Monitor and optimize continuously
+
+### 5. Complexity vs Scalability
+
+**Simple Design:**
+- **Pros**: Easier to understand, faster to build, easier to maintain
+- **Cons**: Harder to scale, may need redesign later
+- **Use When**: MVP, small scale, proof of concept
+- **Example**: Monolithic architecture, single database
+
+**Complex Design:**
+- **Pros**: Better scalability, fault tolerance, flexibility
+- **Cons**: Harder to build, maintain, debug
+- **Use When**: Large scale, high availability requirements
+- **Example**: Microservices, distributed systems, multi-region
+
+**Evolutionary Approach:**
+- Start simple
+- Add complexity as scale demands
+- Refactor when needed
+
+### 6. Durability vs Performance
+
+**Write Strategy:**
+
+**Synchronous Writes:**
+- **Pros**: Data immediately durable, no data loss
+- **Cons**: Higher latency, lower throughput
+- **Use When**: Critical data, financial transactions
+- **Example**: Database with synchronous replication
+
+**Asynchronous Writes:**
+- **Pros**: Lower latency, higher throughput
+- **Cons**: Risk of data loss on failure
+- **Use When**: Logs, analytics, non-critical data
+- **Example**: Write-behind cache, async replication
+
+**Write-Ahead Log (WAL):**
+- Balance between durability and performance
+- Write to log first (fast), then to database
+- **Example**: PostgreSQL WAL, Kafka
+
+### 7. Read vs Write Optimization
+
+**Read-Optimized:**
+- **Pros**: Fast reads, good for read-heavy workloads
+- **Cons**: Slower writes, more storage
+- **Strategies**: Denormalization, materialized views, read replicas
+- **Example**: Analytics databases, reporting systems
+
+**Write-Optimized:**
+- **Pros**: Fast writes, efficient storage
+- **Cons**: Slower reads, complex queries
+- **Strategies**: Normalization, append-only logs, LSM trees
+- **Example**: Time-series databases, event logs
+
+**Balanced:**
+- Optimize for both (with trade-offs)
+- Use appropriate data structures
+- **Example**: B-trees, balanced indexes
+
+### 8. Horizontal vs Vertical Scaling
+
+**Horizontal Scaling (Scale Out):**
+- **Pros**: Unlimited scale, fault tolerance, cost-effective
+- **Cons**: Complexity, data consistency challenges
+- **Use When**: Stateless services, high availability needed
+- **Example**: Web servers, stateless APIs
+
+**Vertical Scaling (Scale Up):**
+- **Pros**: Simpler, no coordination needed
+- **Cons**: Limited scale, single point of failure, expensive
+- **Use When**: Small scale, stateful services
+- **Example**: Database on single machine, small applications
+
+**Hybrid:**
+- Scale vertically first, then horizontally
+- Use vertical scaling for databases initially
+- Scale horizontally for application layer
+
+### 9. Synchronous vs Asynchronous Communication
+
+**Synchronous:**
+- **Pros**: Simple, immediate feedback, easier error handling
+- **Cons**: Blocking, tight coupling, cascading failures
+- **Use When**: Real-time responses needed, simple workflows
+- **Example**: REST APIs, RPC calls
+
+**Asynchronous:**
+- **Pros**: Decoupling, better fault tolerance, higher throughput
+- **Cons**: Complex error handling, eventual consistency
+- **Use When**: Long-running tasks, high throughput needed
+- **Example**: Message queues, event-driven architecture
+
+**Hybrid:**
+- Synchronous for critical paths
+- Asynchronous for background tasks
+- **Example**: Request-response with async notifications
+
+### 10. Strong vs Weak Typing
+
+**Strong Typing (Schema):**
+- **Pros**: Data validation, type safety, better tooling
+- **Cons**: Less flexibility, schema evolution complexity
+- **Use When**: Structured data, critical systems
+- **Example**: SQL databases, Protocol Buffers
+
+**Weak Typing (Schema-less):**
+- **Pros**: Flexibility, easy to evolve, rapid development
+- **Cons**: No validation, potential errors, harder to maintain
+- **Use When**: Rapid prototyping, flexible requirements
+- **Example**: NoSQL document stores, JSON
+
+**Schema Evolution:**
+- Version schemas
+- Backward compatibility
+- Gradual migration
+
+### 11. Centralized vs Distributed
+
+**Centralized:**
+- **Pros**: Simpler, easier to manage, consistent
+- **Cons**: Single point of failure, scalability limits
+- **Use When**: Small scale, simple systems
+- **Example**: Single database, monolithic application
+
+**Distributed:**
+- **Pros**: Scalability, fault tolerance, geographic distribution
+- **Cons**: Complexity, consistency challenges, network issues
+- **Use When**: Large scale, high availability, global reach
+- **Example**: Distributed databases, microservices, CDN
+
+### 12. Push vs Pull Model
+
+**Push Model (Fan-out on Write):**
+- **Pros**: Fast reads, pre-computed results
+- **Cons**: Slow writes, storage overhead
+- **Use When**: Read-heavy, small number of consumers
+- **Example**: Social media feeds (for active users)
+
+**Pull Model (Fan-out on Read):**
+- **Pros**: Fast writes, no storage overhead
+- **Cons**: Slow reads, computation on demand
+- **Use When**: Write-heavy, large number of consumers
+- **Example**: Social media feeds (for inactive users)
+
+**Hybrid:**
+- Push for active users
+- Pull for inactive users
+- **Example**: Twitter's hybrid approach
+
+### 13. SQL vs NoSQL
+
+**SQL (Relational):**
+- **Pros**: ACID transactions, complex queries, relationships
+- **Cons**: Harder to scale, schema rigidity
+- **Use When**: Transactions, relationships, complex queries
+- **Example**: PostgreSQL, MySQL
+
+**NoSQL:**
+- **Pros**: Horizontal scaling, flexible schema, high throughput
+- **Cons**: No ACID (usually), limited queries
+- **Use When**: High scale, simple queries, flexible schema
+- **Example**: MongoDB, Cassandra, DynamoDB
+
+**Polyglot Persistence:**
+- Use right database for right use case
+- SQL for transactions, NoSQL for scale
+- **Example**: PostgreSQL for user data, Redis for cache, Elasticsearch for search
+
+### 14. Monolithic vs Microservices
+
+**Monolithic:**
+- **Pros**: Simpler, easier to develop, test, deploy
+- **Cons**: Harder to scale, technology lock-in, deployment risk
+- **Use When**: Small team, simple system, MVP
+- **Example**: Single application, shared database
+
+**Microservices:**
+- **Pros**: Independent scaling, technology diversity, fault isolation
+- **Cons**: Complexity, network overhead, distributed transactions
+- **Use When**: Large team, complex system, different scaling needs
+- **Example**: Separate services per domain, service mesh
+
+**Evolution:**
+- Start monolithic
+- Extract services as needed
+- Don't over-engineer
+
+### 15. Stateful vs Stateless
+
+**Stateful:**
+- **Pros**: Better performance, simpler logic
+- **Cons**: Harder to scale, session management
+- **Use When**: Performance critical, session required
+- **Example**: Gaming servers, WebSocket connections
+
+**Stateless:**
+- **Pros**: Easy to scale, fault tolerant, simple
+- **Cons**: Need external storage, more requests
+- **Use When**: Web APIs, horizontal scaling needed
+- **Example**: REST APIs, stateless microservices
+
+**Hybrid:**
+- Stateless application servers
+- Stateful storage layer
+- **Example**: Stateless web servers + stateful database
+
+### 16. Optimistic vs Pessimistic Locking
+
+**Optimistic Locking:**
+- **Pros**: Better concurrency, no blocking
+- **Cons**: Retry on conflict, possible wasted work
+- **Use When**: Low conflict rate, read-heavy
+- **Example**: Version numbers, timestamps
+
+**Pessimistic Locking:**
+- **Pros**: Guaranteed consistency, no retries
+- **Cons**: Lower concurrency, possible deadlocks
+- **Use When**: High conflict rate, critical sections
+- **Example**: Database row locks, mutexes
+
+### 17. Eventual vs Strong Consistency
+
+**Strong Consistency:**
+- **Pros**: Always correct, predictable
+- **Cons**: Higher latency, lower availability
+- **Use When**: Financial data, critical operations
+- **Example**: Bank transactions, inventory systems
+
+**Eventual Consistency:**
+- **Pros**: Higher availability, lower latency
+- **Cons**: Possible stale data, conflict resolution
+- **Use When**: Social feeds, comments, analytics
+- **Example**: DNS, distributed caches
+
+### 18. Replication: Synchronous vs Asynchronous
+
+**Synchronous Replication:**
+- **Pros**: No data loss, strong consistency
+- **Cons**: Higher latency, lower availability
+- **Use When**: Critical data, zero data loss requirement
+- **Example**: Financial databases, critical systems
+
+**Asynchronous Replication:**
+- **Pros**: Lower latency, higher availability
+- **Cons**: Possible data loss, eventual consistency
+- **Use When**: High availability, acceptable data loss
+- **Example**: Read replicas, geo-replication
+
+### 19. Sharding: Early vs Late
+
+**Early Sharding:**
+- **Pros**: Better performance at scale, prepared for growth
+- **Cons**: Complexity, operational overhead
+- **Use When**: Known high scale, clear sharding key
+- **Example**: User-based sharding, geographic sharding
+
+**Late Sharding:**
+- **Pros**: Simpler initially, less operational overhead
+- **Cons**: May need migration later, harder to add
+- **Use When**: Unknown scale, MVP phase
+- **Example**: Start with single database, shard when needed
+
+### 20. Development Speed vs Code Quality
+
+**Fast Development:**
+- **Pros**: Quick to market, rapid iteration
+- **Cons**: Technical debt, harder to maintain
+- **Use When**: MVP, time-sensitive features
+- **Example**: Prototypes, proof of concepts
+
+**Code Quality:**
+- **Pros**: Maintainable, scalable, fewer bugs
+- **Cons**: Slower development, more upfront cost
+- **Use When**: Production systems, long-term projects
+- **Example**: Well-tested, documented code
+
+**Balance:**
+- Fast for MVP
+- Quality for production
+- Continuous refactoring
+
+### Trade-off Decision Framework
+
+When evaluating trade-offs, consider:
+
+1. **Requirements**: What are the non-negotiable requirements?
+2. **Scale**: Current and projected scale
+3. **Team**: Team size and expertise
+4. **Timeline**: Time to market constraints
+5. **Budget**: Cost constraints
+6. **Risk Tolerance**: How much risk is acceptable?
+7. **Future Growth**: How will requirements change?
+
+**Example Decision Process:**
+
+**Problem**: Choose between SQL and NoSQL
+
+**Considerations:**
+- **Scale**: 1M users → SQL is fine, 1B users → Consider NoSQL
+- **Queries**: Complex joins → SQL, Simple lookups → NoSQL
+- **Consistency**: Need ACID → SQL, Eventual OK → NoSQL
+- **Team**: SQL expertise → SQL, NoSQL expertise → NoSQL
+- **Future**: Unknown → SQL (easier to migrate), Known scale → NoSQL
+
+**Decision**: Start with SQL, migrate to NoSQL if scale demands
+
+---
+
 ## Essential Clarification Questions
 
 ### Scale Questions:
