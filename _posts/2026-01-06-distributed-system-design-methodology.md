@@ -1251,6 +1251,1270 @@ Before finalizing design, ensure you've:
 
 ---
 
+## Common System Design Patterns & Methodologies
+
+Understanding design patterns and methodologies is crucial for system design interviews. This section covers Domain-Driven Design (DDD) and other common approaches used in building distributed systems.
+
+### Domain-Driven Design (DDD)
+
+**Domain-Driven Design (DDD)** is a software development approach introduced by Eric Evans that focuses on modeling software based on the business domain and domain logic.
+
+#### Core Concepts
+
+**1. Domain:**
+- The sphere of knowledge or activity around which business logic revolves
+- **Example**: E-commerce domain includes: products, orders, customers, payments
+
+**2. Domain Model:**
+- A system of abstractions that describes selected aspects of a domain
+- Represents business concepts, not just data structures
+- **Example**: Order entity with business rules (can't cancel shipped order)
+
+**3. Ubiquitous Language:**
+- Common vocabulary used by developers and domain experts
+- Same terms in code and conversations
+- **Example**: "Order", "Cart", "Checkout" used consistently
+
+**4. Bounded Context:**
+- Explicit boundary within which a domain model applies
+- Different contexts can have different models for same concept
+- **Example**: "Customer" in Sales context vs "Customer" in Shipping context
+
+**5. Entities:**
+- Objects with unique identity that persists over time
+- **Example**: User, Order, Product (identified by ID)
+
+**6. Value Objects:**
+- Objects defined by their attributes, not identity
+- **Example**: Money (amount + currency), Address (street + city + zip)
+
+**7. Aggregates:**
+- Cluster of entities and value objects treated as a single unit
+- Aggregate root: Entry point to aggregate
+- **Example**: Order (root) contains OrderItems (entities)
+
+**8. Domain Services:**
+- Operations that don't naturally belong to entities
+- **Example**: Transfer money between accounts (involves multiple entities)
+
+**9. Repositories:**
+- Abstraction for accessing aggregates
+- Hides persistence details
+- **Example**: `OrderRepository.findByCustomerId()`
+
+**10. Domain Events:**
+- Something that happened in the domain
+- Other parts of system react to events
+- **Example**: OrderPlaced, PaymentProcessed, ShipmentDelivered
+
+#### DDD Layers
+
+```
+┌─────────────────────────────────┐
+│   Presentation Layer            │  (UI, API)
+├─────────────────────────────────┤
+│   Application Layer             │  (Use Cases, Orchestration)
+├─────────────────────────────────┤
+│   Domain Layer                  │  (Business Logic, Entities)
+├─────────────────────────────────┤
+│   Infrastructure Layer          │  (Database, External Services)
+└─────────────────────────────────┘
+```
+
+**Example - E-commerce System:**
+
+**Domain Model:**
+```c
+// Entity
+class Order {
+    private OrderId id;
+    private CustomerId customerId;
+    private List<OrderItem> items;
+    private OrderStatus status;
+    
+    // Business logic in domain
+    void cancel() {
+        if (status == OrderStatus.SHIPPED) {
+            throw new DomainException("Cannot cancel shipped order");
+        }
+        this.status = OrderStatus.CANCELLED;
+        DomainEvents.raise(new OrderCancelled(this.id));
+    }
+}
+
+// Value Object
+class Money {
+    private BigDecimal amount;
+    private Currency currency;
+    
+    Money add(Money other) {
+        if (!this.currency.equals(other.currency)) {
+            throw new DomainException("Cannot add different currencies");
+        }
+        return new Money(this.amount + other.amount, this.currency);
+    }
+}
+
+// Aggregate Root
+class Order {  // Aggregate root
+    private OrderId id;
+    private List<OrderItem> items;  // Entities within aggregate
+    // ...
+}
+```
+
+**Bounded Contexts:**
+- **Sales Context**: Order, Customer, Product
+- **Shipping Context**: Shipment, Address, Carrier
+- **Payment Context**: Payment, Invoice, Refund
+
+**Benefits:**
+- **Business Alignment**: Code reflects business domain
+- **Maintainability**: Clear structure, easier to understand
+- **Testability**: Domain logic isolated from infrastructure
+- **Scalability**: Bounded contexts enable microservices
+
+**When to Use:**
+- Complex business domains
+- Long-lived projects
+- Need for business logic clarity
+- Multiple teams working on different contexts
+
+---
+
+### Other Common System Design Patterns & Methodologies
+
+#### 1. Microservices Architecture
+
+**Definition:**
+- Architecture pattern where application is built as collection of small, independent services
+- Each service runs in own process and communicates via APIs
+
+**Characteristics:**
+- **Service Independence**: Deploy, scale, update independently
+- **Technology Diversity**: Each service can use different tech stack
+- **Fault Isolation**: Service failure doesn't crash entire system
+- **Team Autonomy**: Different teams own different services
+
+**Example:**
+```
+┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+│ User Service│   │Order Service│   │Payment Service│
+└─────────────┘   └─────────────┘   └─────────────┘
+      │                 │                 │
+      └─────────────────┴─────────────────┘
+                    │
+            ┌───────┴───────┐
+            │  API Gateway  │
+            └───────┬───────┘
+                    │
+            ┌───────┴───────┘
+            │    Clients     │
+            └────────────────┘
+```
+
+**Benefits:**
+- Scalability (scale services independently)
+- Technology flexibility
+- Fault isolation
+- Team autonomy
+
+**Challenges:**
+- Complexity (distributed system challenges)
+- Network overhead
+- Data consistency
+- Service coordination
+
+**When to Use:**
+- Large, complex systems
+- Different scaling requirements
+- Multiple teams
+- Need for technology diversity
+
+---
+
+#### 2. Event-Driven Architecture (EDA)
+
+**Definition:**
+- Architecture where services communicate through events
+- Services publish events and react to events from other services
+
+**Patterns:**
+- **Event Sourcing**: Store all events, reconstruct state from events
+- **CQRS (Command Query Responsibility Segregation)**: Separate read/write models
+- **Pub/Sub**: Publishers send events, subscribers consume
+
+**Example:**
+```
+Order Service          Payment Service        Shipping Service
+     │                       │                       │
+     │  OrderPlaced Event   │                       │
+     ├──────────────────────>│                       │
+     │                       │  PaymentProcessed    │
+     │                       ├──────────────────────>│
+     │                       │                       │  ShipmentCreated
+     │                       │                       │
+```
+
+**Benefits:**
+- **Decoupling**: Services don't know about each other
+- **Scalability**: Easy to add new subscribers
+- **Flexibility**: Services can evolve independently
+- **Event Sourcing**: Complete audit trail
+
+**Challenges:**
+- Eventual consistency
+- Event ordering
+- Error handling
+- Debugging complexity
+
+**When to Use:**
+- Loosely coupled services
+- Real-time processing
+- Need for audit trail
+- Multiple consumers of same data
+
+---
+
+#### 3. CQRS (Command Query Responsibility Segregation)
+
+**Definition:**
+- Separate read and write models
+- Commands (writes) and Queries (reads) use different models
+
+**Architecture:**
+```
+Write Side (Commands)          Read Side (Queries)
+┌──────────────┐              ┌──────────────┐
+│ Command API   │              │  Query API   │
+└───────┬───────┘              └───────┬───────┘
+        │                               │
+        v                               v
+┌──────────────┐              ┌──────────────┐
+│ Write Model   │              │  Read Model  │
+│ (Normalized)  │              │(Denormalized)│
+└───────┬───────┘              └───────┬───────┘
+        │                               │
+        v                               │
+┌──────────────┐                       │
+│ Event Store   │                       │
+└───────┬───────┘                       │
+        │                               │
+        └───────────> Projection ───────┘
+```
+
+**Benefits:**
+- **Optimized Reads**: Denormalized read models for fast queries
+- **Optimized Writes**: Normalized write models for consistency
+- **Scalability**: Scale read/write independently
+- **Flexibility**: Different models for different use cases
+
+**Challenges:**
+- Complexity (two models to maintain)
+- Eventual consistency
+- Data synchronization
+
+**When to Use:**
+- Read/write workloads differ significantly
+- Complex queries on write model
+- Need for high read performance
+- Event sourcing systems
+
+---
+
+#### 4. Event Sourcing
+
+**Definition:**
+- Store all changes as sequence of events
+- Current state reconstructed by replaying events
+
+**Example:**
+```
+Events:
+1. OrderCreated(orderId=123, customerId=456)
+2. ItemAdded(orderId=123, itemId=789, quantity=2)
+3. ItemAdded(orderId=123, itemId=790, quantity=1)
+4. OrderPlaced(orderId=123)
+
+Current State (reconstructed):
+Order {
+    id: 123,
+    customerId: 456,
+    items: [
+        {itemId: 789, quantity: 2},
+        {itemId: 790, quantity: 1}
+    ],
+    status: PLACED
+}
+```
+
+**Benefits:**
+- **Complete Audit Trail**: All changes recorded
+- **Time Travel**: Reconstruct state at any point
+- **Debugging**: See exactly what happened
+- **Event Replay**: Rebuild state from scratch
+
+**Challenges:**
+- Storage overhead (all events)
+- Event versioning
+- Snapshot management
+- Query complexity
+
+**When to Use:**
+- Need for audit trail
+- Complex business logic
+- Time-travel queries
+- Compliance requirements
+
+---
+
+#### 5. Hexagonal Architecture (Ports & Adapters)
+
+**Definition:**
+- Architecture that isolates core business logic from external concerns
+- Core logic in center, adapters on outside
+
+**Structure:**
+```
+        ┌─────────────────────┐
+        │   Adapters (Out)    │  (REST, GraphQL, gRPC)
+        └──────────┬──────────┘
+                   │
+        ┌───────────┴───────────┐
+        │   Application Core   │
+        │  (Business Logic)    │
+        └───────────┬──────────┘
+                   │
+        ┌───────────┴───────────┐
+        │   Adapters (In)       │  (Database, External APIs)
+        └───────────────────────┘
+```
+
+**Benefits:**
+- **Testability**: Core logic independent of infrastructure
+- **Flexibility**: Easy to swap adapters
+- **Independence**: Business logic doesn't depend on frameworks
+
+**When to Use:**
+- Need for testability
+- Multiple interfaces (REST, GraphQL, etc.)
+- Technology flexibility
+
+---
+
+#### 6. Service-Oriented Architecture (SOA)
+
+**Definition:**
+- Architecture where services communicate via well-defined interfaces
+- Services are reusable, loosely coupled
+
+**Characteristics:**
+- **Service Contracts**: Well-defined interfaces (WSDL, OpenAPI)
+- **Service Registry**: Discovery mechanism
+- **Orchestration**: Coordinate multiple services
+- **Enterprise Service Bus (ESB)**: Message routing
+
+**Benefits:**
+- Reusability
+- Loose coupling
+- Interoperability
+- Business alignment
+
+**Challenges:**
+- Complexity
+- Performance overhead
+- Service coordination
+
+**When to Use:**
+- Enterprise systems
+- Multiple systems integration
+- Service reuse requirements
+
+---
+
+#### 7. Layered Architecture
+
+**Definition:**
+- Organize code into horizontal layers
+- Each layer has specific responsibility
+
+**Layers:**
+```
+┌─────────────────────┐
+│  Presentation Layer │  (UI, Controllers)
+├─────────────────────┤
+│  Business Layer     │  (Business Logic)
+├─────────────────────┤
+│  Data Access Layer  │  (Database, Repositories)
+└─────────────────────┘
+```
+
+**Benefits:**
+- Clear separation of concerns
+- Easy to understand
+- Standard structure
+
+**Challenges:**
+- Can become anemic
+- Layer boundaries can blur
+
+**When to Use:**
+- Simple to medium complexity
+- Traditional applications
+- Team familiarity
+
+---
+
+#### 8. API Gateway Pattern
+
+**Definition:**
+- Single entry point for all client requests
+- Routes requests to appropriate services
+
+**Functions:**
+- **Routing**: Route to correct service
+- **Authentication**: Verify credentials
+- **Rate Limiting**: Control request rate
+- **Load Balancing**: Distribute load
+- **Protocol Translation**: Convert protocols
+- **Aggregation**: Combine multiple service responses
+
+**Example:**
+```
+Clients
+   │
+   v
+┌──────────────┐
+│ API Gateway  │
+└──────┬───────┘
+       │
+   ┌───┴───┬──────┬──────┐
+   │       │      │      │
+   v       v      v      v
+Service1 Service2 Service3 Service4
+```
+
+**Benefits:**
+- Single entry point
+- Centralized cross-cutting concerns
+- Client simplification
+- Service decoupling
+
+**When to Use:**
+- Microservices architecture
+- Multiple clients
+- Need for centralized concerns
+
+---
+
+#### 9. Circuit Breaker Pattern
+
+**Definition:**
+- Prevents cascading failures by stopping requests to failing service
+- Opens circuit when failures exceed threshold
+
+**States:**
+- **Closed**: Normal operation
+- **Open**: Circuit open, requests fail fast
+- **Half-Open**: Testing if service recovered
+
+**Example:**
+```
+Service A ──> Service B
+              │
+              ├─> Success: Circuit Closed
+              ├─> Failures > Threshold: Circuit Open
+              └─> After timeout: Circuit Half-Open
+```
+
+**Benefits:**
+- Prevents cascading failures
+- Fast failure detection
+- Automatic recovery
+
+**When to Use:**
+- External service calls
+- Network calls
+- Need for fault tolerance
+
+---
+
+#### 10. Saga Pattern
+
+**Definition:**
+- Manages distributed transactions across multiple services
+- Uses compensating transactions instead of two-phase commit
+
+**Types:**
+- **Choreography**: Services coordinate through events
+- **Orchestration**: Central coordinator manages flow
+
+**Example (Order Processing):**
+```
+1. Create Order
+2. Reserve Inventory
+3. Process Payment
+   ├─> Success: Confirm Order
+   └─> Failure: Cancel Inventory, Cancel Order
+```
+
+**Benefits:**
+- Distributed transaction management
+- No distributed locks
+- Better scalability
+
+**Challenges:**
+- Compensating transaction complexity
+- Eventual consistency
+
+**When to Use:**
+- Distributed transactions
+- Microservices
+- Long-running transactions
+
+---
+
+#### 11. Strangler Fig Pattern
+
+**Definition:**
+- Gradually replace legacy system by building new system around it
+- Gradually migrate functionality
+
+**Process:**
+1. Build new system alongside legacy
+2. Route new features to new system
+3. Gradually migrate existing features
+4. Eventually retire legacy system
+
+**Benefits:**
+- Low risk migration
+- Gradual transition
+- No big bang rewrite
+
+**When to Use:**
+- Legacy system replacement
+- Risk-averse migration
+- Continuous operation required
+
+---
+
+#### 12. Bulkhead Pattern
+
+**Definition:**
+- Isolate resources to prevent failure in one area from affecting others
+- Like ship bulkheads that prevent flooding
+
+**Example:**
+```
+Service A ──> Thread Pool 1 ──> Database 1
+Service B ──> Thread Pool 2 ──> Database 2
+Service C ──> Thread Pool 3 ──> Database 3
+```
+
+**Benefits:**
+- Fault isolation
+- Resource isolation
+- Prevents cascading failures
+
+**When to Use:**
+- Critical services
+- Need for isolation
+- Resource constraints
+
+---
+
+## Common Design Patterns in System Design
+
+This section lists common design patterns frequently used in distributed system design. These patterns solve recurring problems and provide proven solutions.
+
+### 1. Creational Patterns
+
+#### Singleton Pattern
+**Purpose**: Ensure only one instance of a class exists.
+
+**System Design Use Cases:**
+- **Configuration Manager**: Single source of configuration
+- **Connection Pool**: Single pool manager
+- **Cache Manager**: Single cache instance
+- **Service Registry**: Single registry instance
+
+**Example:**
+```c
+// Configuration Manager (Singleton)
+class ConfigManager {
+private:
+    static ConfigManager* instance;
+    ConfigManager() {}
+    
+public:
+    static ConfigManager* getInstance() {
+        if (instance == nullptr) {
+            instance = new ConfigManager();
+        }
+        return instance;
+    }
+};
+```
+
+**Considerations:**
+- Thread safety in multi-threaded environments
+- Testing challenges (hard to mock)
+- Global state concerns
+
+#### Factory Pattern
+**Purpose**: Create objects without specifying exact class.
+
+**System Design Use Cases:**
+- **Database Connection Factory**: Create connections for different DB types
+- **Message Queue Factory**: Create queues (Kafka, RabbitMQ, SQS)
+- **Storage Factory**: Create storage (S3, Azure Blob, GCS)
+- **Service Factory**: Create service instances
+
+**Example:**
+```c
+// Storage Factory
+class StorageFactory {
+public:
+    static Storage* createStorage(string type) {
+        if (type == "s3") return new S3Storage();
+        if (type == "azure") return new AzureBlobStorage();
+        if (type == "gcs") return new GCSStorage();
+        throw new InvalidStorageType();
+    }
+};
+```
+
+#### Builder Pattern
+**Purpose**: Construct complex objects step by step.
+
+**System Design Use Cases:**
+- **Query Builder**: Build complex database queries
+- **Request Builder**: Build HTTP requests with headers, body
+- **Configuration Builder**: Build system configurations
+- **Pipeline Builder**: Build data processing pipelines
+
+**Example:**
+```c
+// Query Builder
+Query query = QueryBuilder()
+    .select("id", "name", "email")
+    .from("users")
+    .where("age > 18")
+    .orderBy("name")
+    .limit(100)
+    .build();
+```
+
+### 2. Structural Patterns
+
+#### Adapter Pattern
+**Purpose**: Allow incompatible interfaces to work together.
+
+**System Design Use Cases:**
+- **Legacy System Integration**: Adapt old APIs to new interfaces
+- **Third-Party Service Adapters**: Wrap external services
+- **Protocol Adapters**: Convert between protocols (REST to gRPC)
+- **Database Adapters**: Abstract different database interfaces
+
+**Example:**
+```c
+// Legacy Payment System Adapter
+class LegacyPaymentAdapter : public PaymentService {
+private:
+    LegacyPaymentSystem legacy;
+    
+public:
+    void processPayment(PaymentRequest req) {
+        LegacyRequest legacyReq = convert(req);
+        legacy.process(legacyReq);
+    }
+};
+```
+
+#### Facade Pattern
+**Purpose**: Provide simplified interface to complex subsystem.
+
+**System Design Use Cases:**
+- **API Gateway**: Simplified interface to multiple services
+- **Service Facade**: Hide complexity of multiple service calls
+- **Database Facade**: Simplify complex database operations
+- **Authentication Facade**: Simplify auth complexity
+
+**Example:**
+```c
+// Order Service Facade
+class OrderFacade {
+public:
+    OrderResult placeOrder(OrderRequest req) {
+        // Hide complexity of multiple service calls
+        validateOrder(req);
+        reserveInventory(req);
+        processPayment(req);
+        createShipment(req);
+        return result;
+    }
+};
+```
+
+#### Proxy Pattern
+**Purpose**: Provide placeholder or surrogate for another object.
+
+**System Design Use Cases:**
+- **API Proxy**: Proxy for external APIs (caching, rate limiting)
+- **Database Proxy**: Connection pooling, query caching
+- **Service Proxy**: Load balancing, failover
+- **Security Proxy**: Authentication, authorization
+
+**Example:**
+```c
+// Caching Proxy
+class DatabaseProxy : public Database {
+private:
+    Database* realDB;
+    Cache* cache;
+    
+public:
+    Data query(string sql) {
+        if (cache->exists(sql)) {
+            return cache->get(sql);
+        }
+        Data result = realDB->query(sql);
+        cache->set(sql, result);
+        return result;
+    }
+};
+```
+
+#### Decorator Pattern
+**Purpose**: Add behavior to objects dynamically.
+
+**System Design Use Cases:**
+- **Request Decorators**: Add logging, metrics, retry logic
+- **Service Decorators**: Add caching, rate limiting
+- **Message Decorators**: Add encryption, compression
+- **Pipeline Decorators**: Add processing steps
+
+**Example:**
+```c
+// Service with Decorators
+Service* service = new BasicService();
+service = new LoggingDecorator(service);
+service = new MetricsDecorator(service);
+service = new RetryDecorator(service);
+```
+
+### 3. Behavioral Patterns
+
+#### Observer Pattern
+**Purpose**: Notify multiple objects about state changes.
+
+**System Design Use Cases:**
+- **Event Notifications**: Notify subscribers of events
+- **Cache Invalidation**: Notify caches of data changes
+- **UI Updates**: Update multiple UI components
+- **Monitoring**: Notify monitors of system events
+
+**Example:**
+```c
+// Event Publisher
+class EventPublisher {
+private:
+    vector<Observer*> observers;
+    
+public:
+    void subscribe(Observer* obs) {
+        observers.push_back(obs);
+    }
+    
+    void notify(Event event) {
+        for (auto obs : observers) {
+            obs->update(event);
+        }
+    }
+};
+```
+
+#### Strategy Pattern
+**Purpose**: Define family of algorithms, make them interchangeable.
+
+**System Design Use Cases:**
+- **Load Balancing Strategies**: Round-robin, least-connections, IP-hash
+- **Caching Strategies**: LRU, LFU, FIFO
+- **Retry Strategies**: Exponential backoff, linear, fixed
+- **Compression Strategies**: Gzip, Snappy, LZ4
+
+**Example:**
+```c
+// Load Balancing Strategy
+class LoadBalancer {
+private:
+    LoadBalanceStrategy* strategy;
+    
+public:
+    void setStrategy(LoadBalanceStrategy* s) {
+        strategy = s;
+    }
+    
+    Server selectServer(vector<Server> servers) {
+        return strategy->select(servers);
+    }
+};
+```
+
+#### Command Pattern
+**Purpose**: Encapsulate requests as objects.
+
+**System Design Use Cases:**
+- **Request Queues**: Queue commands for async processing
+- **Undo/Redo**: Command history for rollback
+- **Job Scheduling**: Schedule commands for execution
+- **API Requests**: Encapsulate API calls as commands
+
+**Example:**
+```c
+// Command Interface
+class Command {
+public:
+    virtual void execute() = 0;
+    virtual void undo() = 0;
+};
+
+// Concrete Commands
+class CreateOrderCommand : public Command {
+    void execute() { orderService.create(order); }
+    void undo() { orderService.delete(orderId); }
+};
+```
+
+#### Chain of Responsibility Pattern
+**Purpose**: Pass requests along chain of handlers.
+
+**System Design Use Cases:**
+- **Request Processing Pipeline**: Authentication → Authorization → Validation → Processing
+- **Error Handling Chain**: Try handlers in sequence
+- **Middleware Chain**: Process through chain
+- **Request Validation**: Validate through multiple validators
+
+**Example:**
+```c
+// Request Handler Chain
+class RequestHandler {
+protected:
+    RequestHandler* next;
+    
+public:
+    void setNext(RequestHandler* handler) {
+        next = handler;
+    }
+    
+    virtual void handle(Request req) {
+        if (canHandle(req)) {
+            process(req);
+        } else if (next) {
+            next->handle(req);
+        }
+    }
+};
+
+// Chain: AuthHandler -> ValidationHandler -> ProcessingHandler
+```
+
+#### State Pattern
+**Purpose**: Allow object to alter behavior when internal state changes.
+
+**System Design Use Cases:**
+- **Order State Machine**: Order states (Pending, Processing, Shipped, Delivered)
+- **Connection States**: Connection lifecycle (Idle, Connecting, Connected, Closed)
+- **Job States**: Job processing states
+- **Workflow States**: Workflow state management
+
+**Example:**
+```c
+// Order State
+class Order {
+private:
+    OrderState* state;
+    
+public:
+    void setState(OrderState* s) {
+        state = s;
+    }
+    
+    void process() {
+        state->process(this);
+    }
+    
+    void cancel() {
+        state->cancel(this);
+    }
+};
+```
+
+### 4. System Design Specific Patterns
+
+#### Retry Pattern
+**Purpose**: Retry failed operations with exponential backoff.
+
+**Use Cases:**
+- Network calls
+- Database operations
+- External service calls
+
+**Implementation:**
+```c
+class RetryHandler {
+public:
+    Result executeWithRetry(function<Result()> operation) {
+        int attempts = 0;
+        int maxAttempts = 3;
+        
+        while (attempts < maxAttempts) {
+            try {
+                return operation();
+            } catch (Exception e) {
+                attempts++;
+                if (attempts >= maxAttempts) throw;
+                sleep(exponentialBackoff(attempts));
+            }
+        }
+    }
+};
+```
+
+#### Timeout Pattern
+**Purpose**: Set maximum time for operations.
+
+**Use Cases:**
+- API calls
+- Database queries
+- External service calls
+
+**Implementation:**
+```c
+class TimeoutHandler {
+public:
+    Result executeWithTimeout(function<Result()> operation, int timeoutMs) {
+        auto future = async(operation);
+        if (future.wait_for(timeoutMs) == future_status::timeout) {
+            throw TimeoutException();
+        }
+        return future.get();
+    }
+};
+```
+
+#### Bulkhead Pattern
+**Purpose**: Isolate resources to prevent cascading failures.
+
+**Use Cases:**
+- Thread pools per service
+- Database connections per service
+- Resource isolation
+
+**Implementation:**
+```c
+// Separate thread pools
+ThreadPool criticalPool(10);  // For critical services
+ThreadPool normalPool(50);     // For normal services
+ThreadPool backgroundPool(20); // For background tasks
+```
+
+#### Throttling Pattern
+**Purpose**: Limit rate of requests.
+
+**Use Cases:**
+- API rate limiting
+- Request throttling
+- Resource protection
+
+**Implementation:**
+```c
+class RateLimiter {
+private:
+    int maxRequests;
+    int windowSeconds;
+    deque<time_t> requests;
+    
+public:
+    bool allowRequest() {
+        time_t now = time(nullptr);
+        // Remove old requests
+        while (!requests.empty() && now - requests.front() > windowSeconds) {
+            requests.pop_front();
+        }
+        
+        if (requests.size() >= maxRequests) {
+            return false;
+        }
+        
+        requests.push_back(now);
+        return true;
+    }
+};
+```
+
+#### Cache-Aside Pattern
+**Purpose**: Application manages cache, not cache system.
+
+**Flow:**
+1. Check cache
+2. If miss, read from database
+3. Write to cache
+4. Return data
+
+**Implementation:**
+```c
+class CacheAsideService {
+public:
+    Data getData(string key) {
+        // Check cache
+        Data data = cache->get(key);
+        if (data != null) {
+            return data;
+        }
+        
+        // Cache miss - read from database
+        data = database->get(key);
+        
+        // Write to cache
+        cache->set(key, data);
+        
+        return data;
+    }
+};
+```
+
+#### Write-Through Pattern
+**Purpose**: Write to cache and database simultaneously.
+
+**Flow:**
+1. Write to cache
+2. Write to database
+3. Return success
+
+**Use Cases:**
+- Critical data
+- Need for consistency
+
+#### Write-Behind Pattern
+**Purpose**: Write to cache immediately, write to database asynchronously.
+
+**Flow:**
+1. Write to cache
+2. Return success
+3. Write to database asynchronously
+
+**Use Cases:**
+- High write throughput
+- Acceptable eventual consistency
+
+#### Sharding Pattern
+**Purpose**: Partition data across multiple databases.
+
+**Strategies:**
+- **Range Sharding**: Partition by range (user_id 0-1000 → DB1)
+- **Hash Sharding**: Partition by hash (hash(user_id) % num_shards)
+- **Directory Sharding**: Lookup table for shard location
+
+**Example:**
+```c
+class ShardedDatabase {
+private:
+    vector<Database> shards;
+    
+public:
+    Database* getShard(string key) {
+        int shardId = hash(key) % shards.size();
+        return &shards[shardId];
+    }
+    
+    void insert(string key, Data data) {
+        Database* shard = getShard(key);
+        shard->insert(key, data);
+    }
+};
+```
+
+#### Replication Pattern
+**Purpose**: Maintain multiple copies of data.
+
+**Types:**
+- **Master-Slave**: One master, multiple read replicas
+- **Master-Master**: Multiple masters, bidirectional replication
+- **Multi-Master**: Multiple masters, conflict resolution
+
+**Use Cases:**
+- Read scaling
+- High availability
+- Geographic distribution
+
+#### Leader Election Pattern
+**Purpose**: Elect leader from group of nodes.
+
+**Use Cases:**
+- Distributed coordination
+- Master selection
+- Service coordination
+
+**Algorithms:**
+- **Bully Algorithm**: Highest ID wins
+- **Ring Algorithm**: Token passing
+- **ZooKeeper**: Using ZooKeeper for election
+
+#### Idempotency Pattern
+**Purpose**: Make operations safe to retry.
+
+**Implementation:**
+- **Idempotency Keys**: Unique key per operation
+- **Check before execute**: Verify if already processed
+- **Idempotent operations**: Operations that can be safely repeated
+
+**Example:**
+```c
+class IdempotentService {
+private:
+    set<string> processedKeys;
+    
+public:
+    Result processRequest(Request req) {
+        string idempotencyKey = req.getIdempotencyKey();
+        
+        // Check if already processed
+        if (processedKeys.contains(idempotencyKey)) {
+            return getCachedResult(idempotencyKey);
+        }
+        
+        // Process request
+        Result result = doProcess(req);
+        
+        // Store result
+        processedKeys.insert(idempotencyKey);
+        cacheResult(idempotencyKey, result);
+        
+        return result;
+    }
+};
+```
+
+#### Backpressure Pattern
+**Purpose**: Control flow when producer is faster than consumer.
+
+**Strategies:**
+- **Drop**: Drop excess messages
+- **Block**: Block producer until consumer catches up
+- **Buffer**: Buffer with size limits
+- **Throttle**: Slow down producer
+
+#### Competing Consumers Pattern
+**Purpose**: Multiple consumers process messages from queue.
+
+**Use Cases:**
+- Parallel processing
+- Load distribution
+- Scalability
+
+**Example:**
+```
+Queue: [Msg1, Msg2, Msg3, Msg4, ...]
+         │      │      │      │
+    Consumer1 Consumer2 Consumer3 Consumer4
+```
+
+#### Publisher-Subscriber Pattern
+**Purpose**: Decouple publishers and subscribers.
+
+**Components:**
+- **Publisher**: Publishes events
+- **Subscriber**: Subscribes to events
+- **Message Broker**: Routes messages
+
+**Use Cases:**
+- Event-driven architecture
+- Loose coupling
+- Scalability
+
+#### Request-Reply Pattern
+**Purpose**: Synchronous request-response communication.
+
+**Use Cases:**
+- RPC calls
+- API requests
+- Service calls
+
+#### Fan-Out Pattern
+**Purpose**: Distribute message to multiple consumers.
+
+**Use Cases:**
+- Broadcast messages
+- Multiple processing paths
+- Notification systems
+
+#### Fan-In Pattern
+**Purpose**: Aggregate messages from multiple sources.
+
+**Use Cases:**
+- Data aggregation
+- Result collection
+- Merge operations
+
+### 5. Pattern Selection Summary
+
+**By Problem Type:**
+
+| Problem | Pattern |
+|---------|---------|
+| Object creation | Factory, Builder, Singleton |
+| Interface adaptation | Adapter, Facade |
+| Behavior extension | Decorator, Strategy |
+| Request handling | Chain of Responsibility, Command |
+| State management | State, Observer |
+| Fault tolerance | Circuit Breaker, Retry, Timeout |
+| Performance | Cache-Aside, Write-Through, Sharding |
+| Scalability | Replication, Competing Consumers |
+| Consistency | Saga, Idempotency |
+| Communication | Publisher-Subscriber, Request-Reply |
+
+**Common Pattern Combinations:**
+- **Circuit Breaker + Retry**: Fault tolerance
+- **Cache-Aside + Write-Through**: Performance + consistency
+- **Sharding + Replication**: Scalability + availability
+- **Publisher-Subscriber + Competing Consumers**: Event processing
+- **Strategy + Factory**: Flexible algorithm selection
+
+---
+
+## Pattern Selection Guide
+
+**Choose Pattern Based On:**
+
+1. **System Complexity**:
+   - Simple: Layered Architecture
+   - Complex: Microservices, DDD
+
+2. **Team Size**:
+   - Small: Monolithic, Layered
+   - Large: Microservices, DDD
+
+3. **Scale Requirements**:
+   - Low: Layered, Monolithic
+   - High: Microservices, Event-Driven
+
+4. **Consistency Requirements**:
+   - Strong: Traditional transactions
+   - Eventual: Event-Driven, Saga
+
+5. **Technology Constraints**:
+   - Flexible: Microservices
+   - Constrained: Layered
+
+**Common Combinations:**
+- **Microservices + DDD**: Domain-driven microservices
+- **Event-Driven + CQRS**: Event sourcing with separate read/write
+- **API Gateway + Microservices**: Standard microservices pattern
+- **Circuit Breaker + Microservices**: Fault tolerance
+
+---
+
 **Related Posts:**
 - [Google System Design Interview Preparation]({{ site.baseurl }}{% post_url 2025-12-11-google-system-design-interview-preparation %})
 - [Google Coding Interview Problem Solving Methodology]({{ site.baseurl }}{% post_url 2026-01-06-google-coding-interview-problem-solving-methodology %})
